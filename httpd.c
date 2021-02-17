@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 #define SERVER_STRING "Server: tinyhttpd/1.0.0\r\n"
 #define STDIN 0
