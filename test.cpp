@@ -4,6 +4,6 @@ using namespace std;
 
 int main()
 {
-    cout << "hello world" << endl;
+    cout << "test centos" << endl;
     return 0;
 }
