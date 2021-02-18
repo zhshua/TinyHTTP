@@ -24,10 +24,16 @@ void error_die(const char *str);
 // 用来处理请求
 void *accept_request(void* client);
 
+// 用来处理错误的请求方法
+void unimplemented(int client_sock);
+
+// 用来处理404错误
+void not_found(int client_sock);
 int main()
 {
 	int server_sock, client_sock;
 	struct sockaddr_in client_addr;
+
 	socklen_t client_addr_size;
 	pthread_t newthread;
 	
@@ -173,12 +179,49 @@ void *accept_request(void *client)
 	
 
 
+void unimplemented(int client_sock)
+{
+	char buf[1024];
+	// 以下填充http响应报文
+	sprintf(buf, "HTTP/1.1 501 Method Not Implemented\r\n");
+	send(client_sock, buf, strlen(buf), 0);
+	sprintf(buf, SERVER_STRING);
+	send(client_sock, buf, strlen(buf), 0);
+	sprintf(buf, "Content-Type: text/html\r\n");
+	send(client_sock, buf, strlen(buf), 0);
+	sprintf(buf, "\r\n");
+	send(client_sock, buf, strlen(buf), 0);
+	sprintf(buf, "<HTML><HEAD><TITLE>Method Not Implemented\r\n");	
+	send(client_sock, buf, strlen(buf), 0);
+	sprintf(buf, "</TITLE></HEAD>\r\n");
+	send(client_sock, buf, strlen(buf), 0);
+	sprintf(buf, "<BODY><P>HTTP request method not supported.\r\n");
+	send(client_sock, buf, strlen(buf), 0);
+	sprintf(buf, "</BODY></HTML>\r\n");
+	send(client_sock, buf, strlen(buf), 0);
+}
 
 
-
-
-
-
-
-
+void not_found(int client_sock)
+{
+	char buf[1024];
+	// 以下填充并发送404响应报文
+	sprintf(buf, "HTTP/1.0 404 NOT FOUND\r\n");
+    send(client_sock, buf, strlen(buf), 0);
+    sprintf(buf, SERVER_STRING);
+    send(client_sock, buf, strlen(buf), 0);
+    sprintf(buf, "Content-Type: text/html\r\n");
+    send(client_sock, buf, strlen(buf), 0);
+    sprintf(buf, "\r\n");
+    send(client_sock, buf, strlen(buf), 0);
+    sprintf(buf, "<HTML><TITLE>Not Found</TITLE>\r\n");
+    send(client_sock, buf, strlen(buf), 0);
+    sprintf(buf, "<BODY><P>The server could not fulfill\r\n");
+    send(client_sock, buf, strlen(buf), 0);
+    sprintf(buf, "your request because the resource specified\r\n");
+    send(client_sock, buf, strlen(buf), 0);
+    sprintf(buf, "is unavailable or nonexistent.\r\n");
+    send(client_sock, buf, strlen(buf), 0);
+    sprintf(buf, "</BODY></HTML>\r\n");
+    send(client_sock, buf, strlen(buf), 0);
 }
