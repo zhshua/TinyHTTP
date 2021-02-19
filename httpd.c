@@ -29,7 +29,23 @@ void unimplemented(int client_sock);
 
 // 用来处理404错误
 void not_found(int client_sock);
-int main()
+
+// 这个函数用来读取一行http请求，并把结尾的'\r\n'替换成'\n'
+int get_line(int sock, char *buf, int size);
+
+// 传递请求的页面给客户端
+void server_file(int sock, char *path);
+
+// 用来添加http响应头部
+void headers(int sock, char *path);
+
+// 用来发送响应实体
+void cat(int client_sock, FILE *file);
+
+// 用来执行cgi脚本
+void execute_cgi(int client_sock, const char *path, const char *method, const char *query_string);
+
+int main(void)
 {
 	int server_sock, client_sock;
 	struct sockaddr_in client_addr;
@@ -51,7 +67,7 @@ int main()
 		if(pthread_create(&newthread, NULL, accept_request, (void*)&client_sock) != 0)
 			error_die("pthread_create");
 	}
-	close(serv_sock);
+	close(server_sock);
 	return 0;
 }
 
@@ -69,16 +85,21 @@ int startup()
 	
 	memset(&serv_addr, 0, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = inet_addr(ip);
-	serv_addr.sin_port = htnos(port);
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	//serv_addr.sin_port = htons(port);
 
 	// 复用套接字的端口	
-	if((setsockopt(serv_addr, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+	if((setsockopt(serv_sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) < 0)
 		error_die("setsockopt failed");
-	if(bind(serv_sock, (strcut sockaddr*)&serv_addr, sizeof(serv_addr) == -1)
+	if(bind(serv_sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
 		error_die("bind");
 	if(listen(serv_sock, 5) < 0)
-		error_dir("listen");
+		error_die("listen");
+	
+	socklen_t serv_size = sizeof(serv_addr);
+	if(getsockname(serv_sock, (struct sockaddr*)&serv_addr, &serv_size) < 0)
+		error_die("getsockname");
+	printf("statring port: %d\n", serv_addr.sin_port);
 	return serv_sock;
 }
 
@@ -110,7 +131,7 @@ void *accept_request(void *client)
 
 	// 保存请求中的方法
 	// http请求第一行为：方法 (空格) url(空格) 主机
-	while(!isspace(buf[i]) && j < (sizeof(method) - 1)){
+	while(!isspace(buf[i]) && (j < (sizeof(method) - 1))){
 		method[j++] = buf[i++];
 	}
 	method[j] = '\0';
@@ -119,7 +140,7 @@ void *accept_request(void *client)
 	// TinyHttp只支持GET和POST
 	if(strcmp(method, "GET") && strcmp(method, "POST")){
 		unimplemented(client_sock);
-		return ;
+		return NULL;
 	}
 	
 	//跳过空格
@@ -128,7 +149,7 @@ void *accept_request(void *client)
 	
 	// 保存请求行中的url
 	j = 0;
-	while(!isspace(buf[i]) && j < (sizeof(url) - 1) && i < numchars){
+	while(!isspace(buf[i]) && j < (sizeof(url) - 1) && (i < numchars)){
 		url[j++] = buf[i++];
 	}
 	url[j] = '\0';
@@ -161,7 +182,7 @@ void *accept_request(void *client)
 	struct stat st;
 	// 如果请求的页面不存在，则读取完剩下的请求报文并丢掉，然后返回not_found错误信息给客户端
 	if(stat(path, &st) == -1){
-		while(numchars > 0 && strcmp(buf, "\n"))
+		while(numchars > 0 && strcmp("\n", buf))
 			numchars = get_line(client_sock, buf, sizeof(buf));
 		not_found(client_sock);
 	}
@@ -175,6 +196,7 @@ void *accept_request(void *client)
 			execute_cgi(client_sock, path, method, query_string); // 需要执行cgi则执行cgi脚本
 	}
 	close(client_sock);
+	return NULL;
 }	
 	
 
@@ -224,4 +246,82 @@ void not_found(int client_sock)
     send(client_sock, buf, strlen(buf), 0);
     sprintf(buf, "</BODY></HTML>\r\n");
     send(client_sock, buf, strlen(buf), 0);
+}
+
+int get_line(int sock, char *buf, int size)
+{
+	int i = 0;
+	char c = '\0';
+	while((i < size - 1) && c != '\n')
+	{
+		if(recv(sock, &c, 1, 0) > 0)
+		{
+			buf[i] = c;
+			i++;
+		}
+		else
+			c = '\n';
+	}
+	
+	// 把结尾的\r\n替换成\n	
+	if(buf[i-1] == '\n' && buf[i-2] == '\r')
+	{
+		buf[i-2] = '\n';
+		i--;
+	}
+	buf[i] = '\0';
+	return i;
+}
+
+void server_file(int sock, char *path)
+{
+	FILE *resource = NULL;
+	int numchars = 1;
+	char buf[1024] = "A";
+	
+	//把剩下的http请求报文读取完，丢掉
+	while(numchars > 0 && strcmp("\n", buf))
+		numchars = get_line(sock, buf, sizeof(buf));
+	
+	resource = fopen(path, "r"); // 打开请求的页面
+	if(resource == NULL)
+		not_found(sock); // 请求的页面不存在，报错
+	else
+	{
+		headers(sock, path);// 添加响应头部
+		cat(sock, resource);// 添加响应实体
+	}
+}
+
+void headers(int sock, char *path)
+{
+	char buf[1024];
+	
+	strcpy(buf, "HTTP/1.0 200 OK\r\n");
+    send(sock, buf, strlen(buf), 0);
+    strcpy(buf, SERVER_STRING);
+    send(sock, buf, strlen(buf), 0);
+    sprintf(buf, "Content-Type: text/html\r\n");
+    send(sock, buf, strlen(buf), 0);
+    strcpy(buf, "\r\n");
+    send(sock, buf, strlen(buf), 0);
+}
+
+void cat(int client_sock, FILE *file)
+{
+	char buf[1024];
+	
+	fgets(buf, sizeof(buf), file);
+	while(!feof(file))
+	{
+		send(client_sock, buf, strlen(buf), 0);
+		fgets(buf, sizeof(buf), file);
+	}
+}
+
+void execute_cgi(int client_sock, const char *path, const char *method, const char *query_string)
+{
+	client_sock = 0;
+	if(path == NULL && method == NULL && query_string == NULL)
+		client_sock = 1;
 }
