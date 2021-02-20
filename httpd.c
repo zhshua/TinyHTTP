@@ -16,7 +16,7 @@
 #define STDERR 2
 
 // 用来初始化服务器端socket
-int startup();
+int startup(int *port);
 
 // 用来输出错误情况
 void error_die(const char *str);
@@ -53,9 +53,10 @@ int main(void)
 	socklen_t client_addr_size;
 	pthread_t newthread;
 	
+	int port = 12345;
 	// 初始化服务器端socket
-	server_sock = startup();
-	printf("httpd start...\n");
+	server_sock = startup(&port);
+	printf("httpd start port: %d...\n",port);
 	
 	while(1)
 	{
@@ -71,14 +72,14 @@ int main(void)
 	return 0;
 }
 
-int startup()
+int startup(int *port)
 {
 	struct sockaddr_in serv_addr;
 	int serv_sock;
 	int on = 1;
 	
-	int port = 12345; // 端口
-	char *ip = "172.22.29.7"; // ip
+	//int port = 12345; // 端口
+	//char *ip = "172.22.29.7"; // ip
 	serv_sock = socket(PF_INET, SOCK_STREAM, 0);// 创建服务器端套接字
 	if(serv_sock == -1)
 		error_die("socket");
@@ -93,13 +94,15 @@ int startup()
 		error_die("setsockopt failed");
 	if(bind(serv_sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
 		error_die("bind");
+	if(*port == 0)
+	{
+		socklen_t serv_size = sizeof(serv_addr);
+		if(getsockname(serv_sock, (struct sockaddr*)&serv_addr, &serv_size) < 0)
+			error_die("getsockname");
+		*port = ntohs(serv_addr.sin_port);
+	}
 	if(listen(serv_sock, 5) < 0)
 		error_die("listen");
-	
-	socklen_t serv_size = sizeof(serv_addr);
-	if(getsockname(serv_sock, (struct sockaddr*)&serv_addr, &serv_size) < 0)
-		error_die("getsockname");
-	printf("statring port: %d\n", serv_addr.sin_port);
 	return serv_sock;
 }
 
@@ -154,6 +157,8 @@ void *accept_request(void *client)
 	}
 	url[j] = '\0';
 	
+	puts(method);
+	puts(url);
 	// 如果是POST方法，则需要执行cgi脚本
 	if(strcmp(method, "POST") == 0)
 		cgi = 1;
