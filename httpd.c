@@ -118,7 +118,7 @@ void *accept_request(void *client)
 	int client_sock = *((int*)client);// 已连接的套接字
 
 	int numchars; // 用来记录接收到的字符数
-	int buf[1024]; // 表示接收缓存
+	char buf[1024]; // 表示接收缓存
 
 	char method[255]; // 用来保存http请求头部方法(GET/POST)
 	char url[255]; // 用来保存http请求的资源url
@@ -132,18 +132,14 @@ void *accept_request(void *client)
 	// 先读取一行http请求
 	numchars = get_line(client_sock, buf, sizeof(buf));	
 	int i = 0,j = 0; // i用来遍历buf，j用来遍历method、url等
-	printf("numchars = %d\n",numchars);
-	puts(buf);
-	//for(int k = 0;k < 15;++k)
-	//	printf("%c",buf[k]);
-	printf("----");
+	
 	// 保存请求中的方法
 	// http请求第一行为：方法 (空格) url(空格) 主机
 	while(!isspace(buf[i]) && (j < (sizeof(method) - 1))){
 		method[j++] = buf[i++];
 	}
 	method[j] = '\0';
-	puts(method);
+	//puts(method);
 	// 如果请求的方法既不是GET也不是POST，返回错误给客户端
 	// TinyHttp只支持GET和POST
 	if(strcmp(method, "GET") && strcmp(method, "POST")){
@@ -152,7 +148,7 @@ void *accept_request(void *client)
 	}
 	
 	//跳过空格
-	while(!isspace(buf[i]))
+	while(isspace(buf[i]))
 		i++;
 	
 	// 保存请求行中的url
@@ -162,8 +158,8 @@ void *accept_request(void *client)
 	}
 	url[j] = '\0';
 	
-	puts(method);
-	puts(url);
+	//puts(method);
+	//puts(url);
 	// 如果是POST方法，则需要执行cgi脚本
 	if(strcmp(method, "POST") == 0)
 		cgi = 1;
@@ -257,7 +253,7 @@ void not_found(int client_sock)
     sprintf(buf, "</BODY></HTML>\r\n");
     send(client_sock, buf, strlen(buf), 0);
 }
-/*
+
 int get_line(int sock, char *buf, int size)
 {
 	int i = 0;
@@ -267,7 +263,6 @@ int get_line(int sock, char *buf, int size)
 		if(recv(sock, &c, 1, 0) > 0)
 		{
 			buf[i] = c;
-	//		printf("%c", buf[i]);
 			i++;
 		}
 		else
@@ -278,46 +273,11 @@ int get_line(int sock, char *buf, int size)
 	// 把结尾的\r\n替换成\n	
 	if(buf[i-1] == '\n' && buf[i-2] == '\r')
 	{
-	//	puts("yes");
 		buf[i-2] = '\n';
 		i--;
 	}
 	buf[i] = '\0';
-	//puts(buf);
 	return i;
-}
-*/
-
-int get_line(int sock, char *buf, int size)
-{
-    int i = 0;
-    char c = '\0';
-    int n;
-
-    while ((i < size - 1) && (c != '\n'))
-    {
-        n = recv(sock, &c, 1, 0);
-        /* DEBUG printf("%02X\n", c); */
-        if (n > 0)
-        {
-            if (c == '\r')
-            {
-                n = recv(sock, &c, 1, MSG_PEEK);
-                /* DEBUG printf("%02X\n", c); */
-                if ((n > 0) && (c == '\n'))
-                    recv(sock, &c, 1, 0);
-                else
-                    c = '\n';
-            }
-            buf[i] = c;
-            i++;
-        }
-        else
-            c = '\n';
-    }
-    buf[i] = '\0';
-
-    return(i);
 }
 
 void server_file(int sock, char *path)
