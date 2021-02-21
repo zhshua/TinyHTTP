@@ -45,6 +45,12 @@ void cat(int client_sock, FILE *file);
 // 用来执行cgi脚本
 void execute_cgi(int client_sock, const char *path, const char *method, const char *query_string);
 
+// 处理错误的请求
+void bad_request(int sock);
+
+// 处理内部错误的情况
+void cannot_execute(int sock);
+
 int main(void)
 {
 	int server_sock, client_sock;
@@ -234,7 +240,7 @@ void not_found(int client_sock)
 {
 	char buf[1024];
 	// 以下填充并发送404响应报文
-	sprintf(buf, "HTTP/1.0 404 NOT FOUND\r\n");
+	sprintf(buf, "HTTP/1.1 404 NOT FOUND\r\n");
     send(client_sock, buf, strlen(buf), 0);
     sprintf(buf, SERVER_STRING);
     send(client_sock, buf, strlen(buf), 0);
@@ -304,7 +310,7 @@ void headers(int sock, char *path)
 {
 	char buf[1024];
 	
-	strcpy(buf, "HTTP/1.0 200 OK\r\n");
+	strcpy(buf, "HTTP/1.1 200 OK\r\n");
     send(sock, buf, strlen(buf), 0);
     strcpy(buf, SERVER_STRING);
     send(sock, buf, strlen(buf), 0);
@@ -328,7 +334,144 @@ void cat(int client_sock, FILE *file)
 
 void execute_cgi(int client_sock, const char *path, const char *method, const char *query_string)
 {
-	client_sock = 0;
-	if(path == NULL && method == NULL && query_string == NULL)
-		client_sock = 1;
+	
+	int input[2];// 由父进程向子进程的输入管道
+	int output[2];//由子进程向父进程的输出管道
+	int status; //捕获进程结束信息
+	
+	int numchars = 1;
+	char buf[1024] = "A";//接收缓存
+	char c; //接收的单个字符
+	int content_length = 1;// 用来保存POST请求的数据长度
+	
+	// 如果是GET请求，则不需要读取表单数据，把头部读取完扔掉即可
+	if(strcmp(method, "GET") == 0)
+	{
+		while(numchars > 0 && strcmp(buf, "\n"))// numchars和buf已经在定义的时候分别初始化了
+			numchars = get_line(client_sock, buf, sizeof(buf));
+	}
+	else if(strcmp(method, "POST") == 0) //如果是POST请求，则保存一下请求的长度方便后续读取
+	{
+		printf("POST...........\n");
+		numchars = get_line(client_sock, buf, sizeof(buf));//这里先读取一行字符，顺便也初始化了numchars和buf
+		while(numchars > 0 && strcmp(buf, "\n"))
+		{
+			puts(buf);
+			buf[15] = '\0';//截断一下读取的行，因为Content-Length:是15个字符
+			if(strcmp(buf, "Content-Length:") == 0)
+				content_length = atoi(&buf[16]);//保存POST请求的数据长度
+			numchars = get_line(client_sock, buf, sizeof(buf));
+		}
+		printf("%d\n", content_length);
+		if(content_length == -1){
+			bad_request(client_sock);
+			return ;
+		}
+	}
+	else 
+	{
+		// 如果后续实现了其他请求可补充
+	}
+	
+	pid_t pid;
+	if(pipe(input) < 0){
+		cannot_execute(client_sock);
+		return ;
+	}
+	if(pipe(output) < 0){
+		cannot_execute(client_sock);
+		return ;
+	}
+	if((pid = fork()) < 0){
+		cannot_execute(client_sock);
+		return ;
+	}
+	
+	// 发送响应状态行
+	sprintf(buf, "HTTP/1.1 200 OK\r\n");
+	send(client_sock, buf, strlen(buf), 0);
+	
+	// 如果是子进程，则执行cgi程序
+	if(pid == 0)
+	{
+		// 下面三个数组用来存放执行cgi时候需要的环境变量
+		char meth_env[255];
+		char query_env[255];
+		char length_env[255];
+
+		dup2(output[1], STDOUT); // 复制output[1]到子进程的标准输出(把子进程的标准输出由output[1]端输出进output管道)
+		dup2(input[0],STDIN);	// 复制input[0]到子进程的标准输入(把input管道中的内容由input[0]输入到子进程的标准输出)
+		
+		//关闭不用的管道口
+		close(output[0]);
+		close(input[1]);
+		
+		// 下面写环境变量到系统中
+		sprintf(meth_env, "REQUEST_METHOD=%s", method);
+		putenv(meth_env);
+		if(strcmp(method, "GET") == 0){
+			sprintf(query_env, "QUERY_STRING=%s", query_string);
+			putenv(query_env);
+		}
+		else
+		{
+			sprintf(length_env, "CONTENT_LENGTH=%d", content_length);
+			putenv(length_env);
+		}
+		// 执行cgi脚本
+		execl(path, path, NULL);
+		exit(0);
+	}
+	else
+	{
+		// 关闭父进程不必要的管道口
+		close(output[1]);
+		close(input[0]);	
+	
+		if(strcmp(method, "POST") == 0)
+		{
+			// 父进程往子进程写输入
+			for(int i = 0;i < content_length;++i){
+				recv(client_sock, &c, 1, 0);
+				write(input[1], &c, 1);
+				printf("%c", c);
+			}
+		}
+		while(read(output[0], &c, 1) > 0)
+			send(client_sock, &c, 1, 0);
+		
+		close(output[0]);
+		close(input[1]);
+		waitpid(pid, &status, 0);
+	}		
+}	
+
+void bad_request(int sock)
+{
+	char buf[1024];
+
+    sprintf(buf, "HTTP/1.1 400 BAD REQUEST\r\n");
+    send(sock, buf, strlen(buf), 0);
+    sprintf(buf, "Content-type: text/html\r\n");
+    send(sock, buf, strlen(buf), 0);
+    sprintf(buf, "\r\n");
+    send(sock, buf, strlen(buf), 0);
+    sprintf(buf, "<P>Your browser sent a bad request, ");
+    send(sock, buf, strlen(buf), 0);
+    sprintf(buf, "such as a POST without a Content-Length.\r\n");
+    send(sock, buf, strlen(buf), 0);
+}
+
+void cannot_execute(int sock)
+{
+    char buf[1024];
+
+    sprintf(buf, "HTTP/1.1 500 Internal Server Error\r\n");
+    send(sock, buf, strlen(buf), 0);
+    sprintf(buf, "Content-type: text/html\r\n");
+    send(sock, buf, strlen(buf), 0);
+    sprintf(buf, "\r\n");
+    send(sock, buf, strlen(buf), 0);
+    sprintf(buf, "<P>Error prohibited CGI execution.\r\n");
+    send(sock, buf, strlen(buf), 0);
 }
