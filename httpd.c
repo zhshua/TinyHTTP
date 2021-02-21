@@ -342,7 +342,7 @@ void execute_cgi(int client_sock, const char *path, const char *method, const ch
 	int numchars = 1;
 	char buf[1024] = "A";//接收缓存
 	char c; //接收的单个字符
-	int content_length = 1;// 用来保存POST请求的数据长度
+	int content_length = -1;// 用来保存POST请求的数据长度
 	
 	// 如果是GET请求，则不需要读取表单数据，把头部读取完扔掉即可
 	if(strcmp(method, "GET") == 0)
@@ -437,8 +437,13 @@ void execute_cgi(int client_sock, const char *path, const char *method, const ch
 				printf("%c", c);
 			}
 		}
-		while(read(output[0], &c, 1) > 0)
+		printf("\n");
+		sleep(5);
+		while(read(output[0], &c, 1) > 0){
 			send(client_sock, &c, 1, 0);
+			printf("%c", c);
+		}
+		printf("end\n");
 		
 		close(output[0]);
 		close(input[1]);
