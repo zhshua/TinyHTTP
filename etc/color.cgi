@@ -13,3 +13,4 @@ print $cgi->start_html(-title => uc($color),
                        -BGCOLOR => $color);
 print $cgi->h1("This is $color");
 print $cgi->end_html;
+
