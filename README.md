@@ -7,6 +7,7 @@ main()——>startup()——>accept_request()——>serve_file()——>execute_c
 ### cgi模块执行原理
 ![cgi执行原理](https://img-blog.csdnimg.cn/20210223224152150.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3pzMTIwMTk3,size_16,color_FFFFFF,t_70#pic_center)
 图例解释：定义两个管道input，output，
+
 input：由父进程向子进程的输入管道
 
 output：由子进程向父进程的输出管道
@@ -18,6 +19,7 @@ output：由子进程向父进程的输出管道
 
 ### 遇到的问题
 在写完程序后，启动服务器，客户端能正确收到初始的index.html页面，当在表单里输入数据并且提交后，却显示不出来请求后的颜色页面，可能的原因有如下几个：
+
 1、color.cgi脚本没有执行权限，通过```chmod +x color.cgi```命令，给该文件添加执行权限。
 
 2、index.html没有写的权限，通过```chmod 600 index.html```设置权限。
