@@ -37,7 +37,7 @@ int get_line(int sock, char *buf, int size);
 void server_file(int sock, char *path);
 
 // 用来添加http响应头部
-void headers(int sock, char *path);
+void headers(int sock);
 
 // 用来发送响应实体
 void cat(int client_sock, FILE *file);
@@ -120,10 +120,10 @@ void error_die(const char *str)
 
 void *accept_request(void *client)
 {
-	printf("accept_request...\n");
+//	printf("accept_request...\n");
 	int client_sock = *((int*)client);// 已连接的套接字
 
-	int numchars; // 用来记录接收到的字符数
+	size_t numchars; // 用来记录接收到的字符数
 	char buf[1024]; // 表示接收缓存
 
 	char method[255]; // 用来保存http请求头部方法(GET/POST)
@@ -137,7 +137,7 @@ void *accept_request(void *client)
 	
 	// 先读取一行http请求
 	numchars = get_line(client_sock, buf, sizeof(buf));	
-	int i = 0,j = 0; // i用来遍历buf，j用来遍历method、url等
+	size_t i = 0,j = 0; // i用来遍历buf，j用来遍历method、url等
 	
 	// 保存请求中的方法
 	// http请求第一行为：方法 (空格) url(空格) 主机
@@ -301,12 +301,13 @@ void server_file(int sock, char *path)
 		not_found(sock); // 请求的页面不存在，报错
 	else
 	{
-		headers(sock, path);// 添加响应头部
+		headers(sock);// 添加响应头部
 		cat(sock, resource);// 添加响应实体
 	}
+	fclose(resource);
 }
 
-void headers(int sock, char *path)
+void headers(int sock)
 {
 	char buf[1024];
 	
@@ -352,17 +353,16 @@ void execute_cgi(int client_sock, const char *path, const char *method, const ch
 	}
 	else if(strcmp(method, "POST") == 0) //如果是POST请求，则保存一下请求的长度方便后续读取
 	{
-		printf("POST...........\n");
+		//printf("POST...........\n");
 		numchars = get_line(client_sock, buf, sizeof(buf));//这里先读取一行字符，顺便也初始化了numchars和buf
 		while(numchars > 0 && strcmp(buf, "\n"))
 		{
-			puts(buf);
 			buf[15] = '\0';//截断一下读取的行，因为Content-Length:是15个字符
 			if(strcmp(buf, "Content-Length:") == 0)
 				content_length = atoi(&buf[16]);//保存POST请求的数据长度
 			numchars = get_line(client_sock, buf, sizeof(buf));
 		}
-		printf("%d\n", content_length);
+		//printf("%d\n", content_length);
 		if(content_length == -1){
 			bad_request(client_sock);
 			return ;
@@ -434,16 +434,11 @@ void execute_cgi(int client_sock, const char *path, const char *method, const ch
 			for(int i = 0;i < content_length;++i){
 				recv(client_sock, &c, 1, 0);
 				write(input[1], &c, 1);
-				printf("%c", c);
 			}
 		}
-		printf("\n");
-		sleep(5);
 		while(read(output[0], &c, 1) > 0){
 			send(client_sock, &c, 1, 0);
-			printf("%c", c);
 		}
-		printf("end\n");
 		
 		close(output[0]);
 		close(input[1]);
