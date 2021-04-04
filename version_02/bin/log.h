@@ -7,6 +7,8 @@
 #include <time.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define LOG_DIR "../log/"
 
@@ -36,7 +38,7 @@ void *log_work(void *arg);
 void push_log(int error, const char *str, int grade, log_thread_t *log_thread);
 
 // 获得当前系统时间
-void get_time(const char *ptr);
+void get_time(char *ptr);
 
 // 将日志信息添加到日志缓冲区，并返回复制后的下标
 int add_logbuf(char *buf, const char *p, int index);
