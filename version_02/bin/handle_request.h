@@ -36,7 +36,7 @@ void write_405(http_request_t *http_ptr);
 void write_200(http_request_t *http_ptr, char *filename);
 
 // 从请求的报头中提取url和方法,并返回keep-alive的类型
-int get_url_method(char *header, char *url, char *method, int alive);
+int get_url_method(char *header, char *url, char *method, size_t size);
 
 // 接受一个http请求
 void recv_http(http_request_t *http_ptr, int epfd);

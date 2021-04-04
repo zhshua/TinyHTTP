@@ -16,7 +16,7 @@ struct conf_http_t
 	int listen_num; // 监听的套接字数量最大值
 	int thread_num; // 线程数量
 	char doc[50]; // 资源存访的路径
-	int event_list; // event事件数量
+	int event_num; // event事件数量
 };
 
 // 读取配置信息

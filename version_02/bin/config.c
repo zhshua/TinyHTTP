@@ -26,7 +26,7 @@ void init_conf (struct conf_http_t *conf)
 		if(strcmp(key, "FILE_DIR") == 0)
 			strcpy(conf->doc, value);
 		if(strcmp(key, "EVENT_LIST") == 0)
-			conf->event_list = atoi(value);
+			conf->event_num = atoi(value);
 	}
 	fclose(fp);
 	return ;
