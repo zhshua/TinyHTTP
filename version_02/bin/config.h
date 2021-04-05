@@ -7,7 +7,7 @@
 #define default_listen_num 20
 #define default_thread_num 4
 #define default_file_dir "../doc"
-#define default_event_list 2021
+#define default_event_num 2021
 #define CONF_PATH "../etc/httpd.conf"
 
 struct conf_http_t

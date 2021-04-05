@@ -38,7 +38,7 @@ void init_default_conf(struct conf_http_t *conf)
 	conf->thread_num = default_thread_num;
 	conf->listen_num = default_listen_num;
 	strcpy (conf->doc, default_file_dir);
-	conf->event_list = default_event_list;
+	conf->event_num = default_event_num;
 	return ;
 }
 

@@ -9,6 +9,9 @@
 #include <sys/epoll.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <strings.h>
+#include <sys/sendfile.h>
 #include "epoll.h"
 
 // 200 OK, 且为非keep-alive报头
@@ -33,7 +36,7 @@ void *wait_task(void *arg);
 void write_405(http_request_t *http_ptr);
 
 // 处理200响应
-void write_200(http_request_t *http_ptr, char *filename);
+int write_200(http_request_t *http_ptr, char *filename);
 
 // 从请求的报头中提取url和方法,并返回keep-alive的类型
 int get_url_method(char *header, char *url, char *method, size_t size);

@@ -69,7 +69,7 @@ void push_log(int error, const char *str, int grade, log_thread_t *log_thread)
 void *log_work(void *arg)
 {
 	log_thread_t *log_thread = (log_thread_t*)(arg);
-	char filename[128];
+	char filename[512];
 	char buf[2048], timebuf[256];
 	msglog_t *ptr = NULL;
 
@@ -80,7 +80,7 @@ void *log_work(void *arg)
 	while(1)
 	{
 		get_time(timebuf);
-		sprintf(filename, "../log%s.log", timebuf);
+		sprintf(filename, "../log/%s.log", timebuf);
 		if((fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0666)) == -1)
 		{
 			perror("fail to open log file\n");
@@ -111,7 +111,7 @@ void *log_work(void *arg)
 			if(total > 1048576) // 文件大小超过1M后换下一个文件写
 			{
 				get_time(timebuf);
-				sprintf(filename, "../log%s.log", timebuf);
+				sprintf(filename, "../log/%s.log", timebuf);
 				if((fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0666)) == -1)
 				{
 					perror("fail to open log file\n");      
@@ -119,7 +119,7 @@ void *log_work(void *arg)
 				}
 				total = 0;
 			}
-			if(index > 1024) // 缓存超过1024B后就写文件
+			if(index > 10) // 缓存超过1024B后就写文件
 			{
 				if(write(fd, buf, index) < 0)
 				{
