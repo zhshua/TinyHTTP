@@ -66,11 +66,11 @@ void write_405(http_request_t *http_ptr)
 	if(write(http_ptr->fd, header, strlen(header)) < 0)
 	{
 		push_log(errno, ": faile to write header\n\n", 2, &log_thread);
-	}
-	
+	}	
 	if(write(http_ptr->fd, body, strlen(body)) < 0)
 		push_log(errno, ": fail to write body\n\n", 2, &log_thread);	
 }
+
 
 // 处理200响应
 int write_200(http_request_t *http_ptr, char *filename)
@@ -85,10 +85,18 @@ int write_200(http_request_t *http_ptr, char *filename)
 	}
 	
 	if(http_ptr->alive)
-		strcpy(header, HTTP_200_KEEP);
+		sprintf(header, HTTP_200_KEEP, st.st_size);
 	else
-		strcpy(header, HTTP_200_NONKEEP);
-		
+		sprintf(header, HTTP_200_NONKEEP, st.st_size);
+	
+	if(write(http_ptr->fd, header, strlen(header) < 0))
+	{
+		push_log(errno, ": fail to write\n\n", 2, &log_thread);
+		return -1;
+	}	
+	
+	// puts(header);	
+	
 	int fd = open(filename, O_RDONLY);
 	if(fd == -1)
 	{
@@ -101,6 +109,7 @@ int write_200(http_request_t *http_ptr, char *filename)
 		push_log(errno, ": fail to sendfile\n\n", 2, &log_thread);
 		return -1;
 	}
+	
 	close(fd);
 	return 0;
 }

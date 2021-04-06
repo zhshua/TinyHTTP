@@ -19,15 +19,15 @@
 
 // 200 OK, 且为keep-alive报头
 #define HTTP_200_KEEP "HTTP/1.1 200 OK\r\nConnection: Keep-Alive\r\n\
-    Keep-Alive: timeout=30\r\nContent-Type: text/html\r\nContent-Length: %ld\r\n\r\n"
+Keep-Alive: timeout=30\r\nContent-Type: text/html\r\nContent-Length: %ld\r\n\r\n"
 
 // 405 且为非keep-alive报文
 #define HTTP_405_KEEP "HTTP/1.1 405 Request not allow\r\nConnection: keep-alive\r\n\
-    Server: dblank/1.0.0\r\nContent-Type: text/html\r\nContent-Length : 76\r\n\r\n"
+Server: dblank/1.0.0\r\nContent-Type: text/html\r\nContent-Length : 76\r\n\r\n"
 
 // 405 且为close报头
 #define HTTP_405_NONKEEP "HTTP/1.1 405 Request not allow\r\nConnection: close\r\n\
-    Server: dblank/1.0.0\r\nContent-Type: text/html\r\nContent-Length : 76\r\n\r\n"
+Server: dblank/1.0.0\r\nContent-Type: text/html\r\nContent-Length : 76\r\n\r\n"
 
 // 任务线程的入口, 每个线程不断的执行epoll_wait，根据触发的任务调用对应的函数
 void *wait_task(void *arg);
