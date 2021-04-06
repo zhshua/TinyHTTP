@@ -76,17 +76,17 @@ void *log_work(void *arg)
 	// index是buf的下标, total是写入缓存的总大小
 	int index = 0, total = 0;
 	int fd;
-
+	
+	get_time(timebuf);
+    sprintf(filename, "../log/%s.log", timebuf);
+    if((fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0666)) == -1)
+    {   
+        perror("fail to open log file\n");
+    	exit(1);
+    }
+	
 	while(1)
 	{
-		get_time(timebuf);
-		sprintf(filename, "../log/%s.log", timebuf);
-		if((fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0666)) == -1)
-		{
-			perror("fail to open log file\n");
-			exit(1);
-		}
-		
 		if(pthread_mutex_lock(&(log_thread->lock)) != 0)
 		{
 			perror("fail to lock\n");
