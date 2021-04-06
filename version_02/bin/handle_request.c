@@ -89,7 +89,7 @@ int write_200(http_request_t *http_ptr, char *filename)
 	else
 		sprintf(header, HTTP_200_NONKEEP, st.st_size);
 	
-	if(write(http_ptr->fd, header, strlen(header) < 0))
+	if(write(http_ptr->fd, header, strlen(header)) < 0)
 	{
 		push_log(errno, ": fail to write\n\n", 2, &log_thread);
 		return -1;

@@ -88,7 +88,7 @@ int main()
 			//添加接入日志
 			sprintf(ptr->ip_port, " ip: %s port: %d connect\n\n", inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, 128), ntohs(client_addr.sin_port));
             push_log(errno, ptr->ip_port, 0, &log_thread);
-			puts(ptr->ip_port);
+		//	puts(ptr->ip_port);
 		}
 	}
 	return 0;
