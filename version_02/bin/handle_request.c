@@ -119,7 +119,7 @@ int write_200(http_request_t *http_ptr, char *filename)
 int get_url_method(char *header, char *url, char *method, size_t size)
 {
 	size_t i = 0, j = 0;
-	while(header[i] != ' ' && i < size && j < sizeof(method))
+	while(header[i] != ' ' && i < size && j < 32)
 	{
 		method[j] = header[i];
 		i++, j++;
@@ -130,12 +130,17 @@ int get_url_method(char *header, char *url, char *method, size_t size)
 		i++;
 	
 	j = 0;
-	while(header[i] != ' ' && i < size && j < sizeof(url))
+	while(header[i] != ' ' && i < size && j < 128)
 	{
 		url[j] = header[i];
 		i++, j++;
 	}
 	url[j] = '\0';
+	//printf("size = %d\n", size);
+	//printf("i = %d\n", i);
+	//printf("j = %d\n", j);
+	//printf("header = %s\n", header);
+	//printf("url = %s\n", url);
 	
 	int alive = 0;
 	if(strcasestr(header, "keep-alive") != NULL)
@@ -195,7 +200,8 @@ int send_http(http_request_t *http_ptr, int epfd)
 	char path[128] = { '\0' };
 	strcpy(path, conf.doc);
 	strcat(path, http_ptr->url);
-	
+
+//	puts(path);	
 	if(path[strlen(path) - 1] == '/')
 		strcat(path, "index.html");
 	
