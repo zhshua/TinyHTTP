@@ -119,7 +119,7 @@ void *log_work(void *arg)
 				}
 				total = 0;
 			}
-			if(index > 10) // 缓存超过1024B后就写文件
+			if(index > 1024) // 缓存超过1024B后就写文件
 			{
 				if(write(fd, buf, index) < 0)
 				{
