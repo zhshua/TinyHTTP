@@ -7,6 +7,8 @@
 #include "../lock/lock.h"
 using namespace std;
 
+// TODO: 尝试给阻塞队列添加扩容机制
+
 template<class T>
 class block_queue{
 

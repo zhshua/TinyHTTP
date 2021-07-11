@@ -14,6 +14,13 @@ public:
             throw std::exception();
         }
     }
+    sem(){
+        // sem_init(), 第二个参数, 传0代表用于线程, 传1代表用于进程
+        if(sem_init(&m_sem, 0, 0) != 0)
+        {
+            throw std::exception();
+        }
+    }
     // 析构函数不抛异常, c++默认是析构函数无异常的
     ~sem(){
         sem_destroy(&m_sem);
